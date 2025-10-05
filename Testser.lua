@@ -98,6 +98,10 @@ function startFarm()
     if running then return end
     running = true
 
+    if getgenv().FarmScript then
+        getgenv().FarmScript()
+    end
+
     task.spawn(function()
         while running do
             pcall(function()
@@ -109,10 +113,6 @@ function startFarm()
 
     if getgenv().Config["Auto Upgrade Loop"] then
         autoUpgradeSequence()
-    end
-
-    if getgenv().FarmScript then
-        getgenv().FarmScript()
     end
 
     task.spawn(function()
@@ -135,6 +135,7 @@ end
 gameOverGui:GetPropertyChangedSignal("Visible"):Connect(function()
     if gameOverGui.Visible and getgenv().Config["Auto Replay"] then
         task.wait(1)
+        print("Restarting farm after game over...")
         startFarm()
     end
 end)
