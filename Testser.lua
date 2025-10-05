@@ -1,10 +1,10 @@
--- 📦 Dịch vụ
+-- 📦 Dịch vusigmaboy
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local remoteFunction = ReplicatedStorage:WaitForChild("RemoteFunction")
 local player = game.Players.LocalPlayer
 local towerFolder = workspace:WaitForChild("Towers")
 
--- 💰 Cash GUI
+-- 💰 GUI tiền
 local cashLabel = player:WaitForChild("PlayerGui")
     :WaitForChild("ReactUniversalHotbar")
     :WaitForChild("Frame")
@@ -12,21 +12,21 @@ local cashLabel = player:WaitForChild("PlayerGui")
     :WaitForChild("cash")
     :WaitForChild("amount")
 
--- 🌊 Wave GUI
+-- 🌊 GUI wave
 local waveContainer = player:WaitForChild("PlayerGui")
     :WaitForChild("ReactGameTopGameDisplay")
     :WaitForChild("Frame")
     :WaitForChild("wave")
     :WaitForChild("container")
 
--- 🎮 GameOver GUI
+-- 🎮 GUI GameOver
 local gameOverGui = player:WaitForChild("PlayerGui")
     :WaitForChild("ReactGameNewRewards")
     :WaitForChild("Frame")
     :WaitForChild("gameOver")
 
 ---------------------------------------------------------------------
--- 🔧 Support functions
+-- 🔧 Hỗ trợ
 ---------------------------------------------------------------------
 local function getCash()
     local rawText = cashLabel.Text or ""
@@ -35,12 +35,16 @@ local function getCash()
 end
 
 local function waitForCash(minAmount)
-    while getCash() < minAmount do task.wait(1) end
+    while getCash() < minAmount do
+        task.wait(1)
+    end
 end
 
 local function safeInvoke(args, cost)
-    waitForCash(cost)
-    pcall(function() remoteFunction:InvokeServer(unpack(args)) end)
+    if cost then waitForCash(cost) end
+    pcall(function()
+        remoteFunction:InvokeServer(unpack(args))
+    end)
     task.wait(0.5)
 end
 
@@ -60,15 +64,18 @@ end
 function sellAll()
     for _, tower in ipairs(towerFolder:GetChildren()) do
         local args = {"Troops", "Sell", {Troop = tower}}
-        pcall(function() remoteFunction:InvokeServer(unpack(args)) end)
+        pcall(function()
+            remoteFunction:InvokeServer(unpack(args))
+        end)
         task.wait(0.1)
     end
 end
 
 ---------------------------------------------------------------------
--- 🚀 MAIN AUTO FARM (AutoSkip + Place + Upgrade + Sell)
+-- 🚀 AUTO FARM (AutoSkip + Place + Upgrade + AutoSell)
 ---------------------------------------------------------------------
 function startFarm()
+    -- 🌊 Auto Skip vòng
     task.spawn(function()
         while true do
             pcall(function()
@@ -78,16 +85,19 @@ function startFarm()
         end
     end)
 
+    -- ⚙️ Thực thi FarmScript người dùng viết
     if getgenv().FarmScript then
         getgenv().FarmScript()
     end
 
-    if getgenv().Config['Auto Sell'].Enabled then
+    -- 💰 Auto Sell (nếu bật)
+    if getgenv().Config and getgenv().Config['Auto Sell'] and getgenv().Config['Auto Sell'].Enabled then
+        local targetWave = getgenv().Config['Auto Sell']['At Wave']
         for _, label in ipairs(waveContainer:GetDescendants()) do
             if label:IsA("TextLabel") then
                 label:GetPropertyChangedSignal("Text"):Connect(function()
                     local waveNum = tonumber(label.Text:match("^(%d+)"))
-                    if waveNum and waveNum >= getgenv().Config['Auto Sell']['At Wave'] then
+                    if waveNum and waveNum >= targetWave then
                         sellAll()
                     end
                 end)
@@ -97,12 +107,12 @@ function startFarm()
 end
 
 ---------------------------------------------------------------------
--- 🎮 Khi gameOver: replay + farm lại + sell hết
+-- 🎮 Khi GameOver: Replay + Farm lại + Sell hết
 ---------------------------------------------------------------------
 gameOverGui:GetPropertyChangedSignal("Visible"):Connect(function()
     if gameOverGui.Visible then
         task.wait(3)
-        if getgenv().Config['Auto Replay'] then
+        if getgenv().Config and getgenv().Config['Auto Replay'] then
             startFarm()
             task.wait(5)
             sellAll()
