@@ -3,20 +3,23 @@ local remoteFunction = ReplicatedStorage:WaitForChild("RemoteFunction")
 local player = game.Players.LocalPlayer
 local towerFolder = workspace:WaitForChild("Towers")
 
-local cashLabel = player:WaitForChild("PlayerGui")
+local cashLabel = player
+    :WaitForChild("PlayerGui")
     :WaitForChild("ReactUniversalHotbar")
     :WaitForChild("Frame")
     :WaitForChild("values")
     :WaitForChild("cash")
     :WaitForChild("amount")
 
-local waveContainer = player:WaitForChild("PlayerGui")
+local waveContainer = player
+    :WaitForChild("PlayerGui")
     :WaitForChild("ReactGameTopGameDisplay")
     :WaitForChild("Frame")
     :WaitForChild("wave")
     :WaitForChild("container")
 
-local gameOverGui = player:WaitForChild("PlayerGui")
+local gameOverGui = player
+    :WaitForChild("PlayerGui")
     :WaitForChild("ReactGameNewRewards")
     :WaitForChild("Frame")
     :WaitForChild("gameOver")
@@ -24,19 +27,19 @@ local gameOverGui = player:WaitForChild("PlayerGui")
 local running = false
 
 local function getCash()
-    local rawText = cashLabel.Text or ""
-    local cleaned = rawText:gsub("[^%d%-]", "")
-    return tonumber(cleaned) or 0
+    local raw = cashLabel.Text or ""
+    local clean = raw:gsub("[^%d%-]", "")
+    return tonumber(clean) or 0
 end
 
-local function waitForCash(minAmount)
-    while getCash() < minAmount and running do
+local function waitCash(amount)
+    while getCash() < amount do
         task.wait(1)
     end
 end
 
 local function safeInvoke(args, cost)
-    waitForCash(cost)
+    waitCash(cost)
     pcall(function()
         remoteFunction:InvokeServer(unpack(args))
     end)
@@ -44,63 +47,73 @@ local function safeInvoke(args, cost)
 end
 
 function place(pos, name, cost)
-    if name == "none" or cost == 0 then return end
-    local args = { "Troops", "Pl\208\176ce", { Rotation = CFrame.new(), Position = pos }, name }
+    if name == "none" or cost == 0 then
+        return
+    end
+    local args = {
+        "Troops",
+        "Pl\208\176ce",
+        {
+            Rotation = CFrame.new(),
+            Position = pos
+        },
+        name
+    }
     safeInvoke(args, cost)
 end
 
 function upgrade(num, cost)
-    if getgenv().Config["Auto Upgrade Loop"] then return end
-    if cost == 0 then return end
+    if getgenv().Config["Auto Upgrade Loop"] then
+        return
+    end
+    if cost == 0 then
+        return
+    end
     local tower = towerFolder:GetChildren()[num]
     if tower then
-        local args = { "Troops", "Upgrade", "Set", { Troop = tower } }
+        local args = {
+            "Troops",
+            "Upgrade",
+            "Set",
+            { Troop = tower }
+        }
         safeInvoke(args, cost)
     end
 end
 
-local function sellAllTowers()
+local function sellAll()
     for _, tower in ipairs(towerFolder:GetChildren()) do
-        local args = { "Troops", "Se\108\108", { Troop = tower } }
-        pcall(function() remoteFunction:InvokeServer(unpack(args)) end)
+        pcall(function()
+            remoteFunction:InvokeServer("Troops", "Se\108\108", { Troop = tower })
+        end)
         task.wait(0.2)
     end
 end
 
-local function autoUpgradeSequence()
+local function autoUpgradeLoop()
     task.spawn(function()
         while running and getgenv().Config["Auto Upgrade Loop"] do
             local towers = towerFolder:GetChildren()
             for i = 1, #towers do
-                local tower = towers[i]
-                if tower and tower.Parent then
-                    local args = { "Troops", "Upgrade", "Set", { Troop = tower } }
-                    pcall(function() remoteFunction:InvokeServer(unpack(args)) end)
-                    task.wait(1)
+                local t = towers[i]
+                if not running then
+                    return
                 end
+                pcall(function()
+                    remoteFunction:InvokeServer("Troops", "Upgrade", "Set", { Troop = t })
+                end)
+                task.wait(1)
             end
             task.wait(3)
         end
     end)
 end
 
-local function getWave()
-    for _, label in ipairs(waveContainer:GetDescendants()) do
-        if label:IsA("TextLabel") then
-            local num = tonumber(label.Text:match("^(%d+)"))
-            if num then return num end
-        end
+local function startFarm()
+    if running then
+        return
     end
-    return 0
-end
-
-function startFarm()
-    if running then return end
     running = true
-
-    if getgenv().FarmScript then
-        getgenv().FarmScript()
-    end
 
     task.spawn(function()
         while running do
@@ -112,30 +125,33 @@ function startFarm()
     end)
 
     if getgenv().Config["Auto Upgrade Loop"] then
-        autoUpgradeSequence()
+        autoUpgradeLoop()
     end
 
-    task.spawn(function()
-        while running do
-            local wave = getWave()
-            if getgenv().Config["Auto Sell"]["Enabled"] and wave >= getgenv().Config["Auto Sell"]["At Wave"] then
-                sellAllTowers()
-                running = false
-                print("Auto sell triggered — ending farm cycle.")
-                break
-            end
-            task.wait(2)
-        end
-    end)
+    if getgenv().FarmScript then
+        getgenv().FarmScript()
+    end
 
-    while running do task.wait(1) end
-    print("Farm stopped.")
+    for _, label in ipairs(waveContainer:GetDescendants()) do
+        if label:IsA("TextLabel") then
+            label:GetPropertyChangedSignal("Text"):Connect(function()
+                local wave = tonumber(label.Text:match("^(%d+)"))
+                if
+                    wave
+                    and getgenv().Config["Auto Sell"]["Enabled"]
+                    and wave == getgenv().Config["Auto Sell"]["At Wave"]
+                then
+                    sellAll()
+                    running = false
+                end
+            end)
+        end
+    end
 end
 
 gameOverGui:GetPropertyChangedSignal("Visible"):Connect(function()
-    if gameOverGui.Visible and getgenv().Config["Auto Replay"] then
+    if gameOverGui.Visible then
         task.wait(1)
-        print("Restarting farm after game over...")
         startFarm()
     end
 end)
