@@ -111,10 +111,7 @@ local function monitorGameOver()
         if gameOverGui.Visible then
             task.wait(5)
             if getgenv().Config['Auto Replay'] then
-                local replayButton = gameOverGui.Parent:FindFirstChild("replay")
-                if replayButton and replayButton.Visible then
-                    firesignal(replayButton.MouseButton1Click)
-                end
+                startFarm()
             end
         end
     end)
@@ -127,9 +124,13 @@ function startFarm()
     end
     monitorWave()
     monitorGameOver()
+
     if getgenv().FarmScript then
         getgenv().FarmScript()
     end
+
+    task.wait(3)
+    print("Farm cycle completed. Waiting for replay or restart...")
 end
 
 startFarm()
