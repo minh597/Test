@@ -1,159 +1,141 @@
+-- 📦 Dịch vụ Roblox
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local remoteFunction = ReplicatedStorage:WaitForChild("RemoteFunction")
 local player = game.Players.LocalPlayer
 local towerFolder = workspace:WaitForChild("Towers")
 
-local cashLabel = player
-    :WaitForChild("PlayerGui")
+-- 💰 Lấy GUI tiền
+local cashLabel = player:WaitForChild("PlayerGui")
     :WaitForChild("ReactUniversalHotbar")
     :WaitForChild("Frame")
     :WaitForChild("values")
     :WaitForChild("cash")
     :WaitForChild("amount")
 
-local waveContainer = player
-    :WaitForChild("PlayerGui")
+-- 🌊 Lấy GUI wave
+local waveContainer = player:WaitForChild("PlayerGui")
     :WaitForChild("ReactGameTopGameDisplay")
     :WaitForChild("Frame")
     :WaitForChild("wave")
     :WaitForChild("container")
 
-local gameOverGui = player
-    :WaitForChild("PlayerGui")
+local waveLabel
+for _, v in ipairs(waveContainer:GetDescendants()) do
+    if v:IsA("TextLabel") then
+        waveLabel = v
+        break
+    end
+end
+
+-- 🎮 GUI game over
+local gameOverGui = player:WaitForChild("PlayerGui")
     :WaitForChild("ReactGameNewRewards")
     :WaitForChild("Frame")
     :WaitForChild("gameOver")
 
-local running = false
-
+---------------------------------------------------------------------
+-- ⚙️ Hỗ trợ cơ bản
+---------------------------------------------------------------------
 local function getCash()
-    local raw = cashLabel.Text or ""
-    local clean = raw:gsub("[^%d%-]", "")
-    return tonumber(clean) or 0
+    local text = cashLabel.Text or ""
+    return tonumber(text:gsub("[^%d]", "")) or 0
 end
 
-local function waitCash(amount)
-    while getCash() < amount do
-        task.wait(1)
+local function waitCash(cost)
+    while getCash() < cost do
+        task.wait(0.5)
     end
 end
 
-local function safeInvoke(args, cost)
-    waitCash(cost)
+local function invoke(args)
     pcall(function()
         remoteFunction:InvokeServer(unpack(args))
     end)
-    task.wait(0.5)
 end
 
+---------------------------------------------------------------------
+-- 🧱 Hành động cơ bản
+---------------------------------------------------------------------
 function place(pos, name, cost)
-    if name == "none" or cost == 0 then
-        return
-    end
-    local args = {
-        "Troops",
-        "Pl\208\176ce",
-        {
-            Rotation = CFrame.new(),
-            Position = pos
-        },
-        name
-    }
-    safeInvoke(args, cost)
+    waitCash(cost)
+    invoke({ "Troops", "Place", { Rotation = CFrame.new(), Position = pos }, name })
+    task.wait(0.3)
 end
 
-function upgrade(num, cost)
-    if getgenv().Config["Auto Upgrade Loop"] then
-        return
-    end
-    if cost == 0 then
-        return
-    end
-    local tower = towerFolder:GetChildren()[num]
+function upgrade(index, cost)
+    waitCash(cost)
+    local tower = towerFolder:GetChildren()[index]
     if tower then
-        local args = {
-            "Troops",
-            "Upgrade",
-            "Set",
-            { Troop = tower }
-        }
-        safeInvoke(args, cost)
+        invoke({ "Troops", "Upgrade", "Set", { Troop = tower } })
+        task.wait(0.3)
     end
 end
 
 local function sellAll()
     for _, tower in ipairs(towerFolder:GetChildren()) do
-        pcall(function()
-            remoteFunction:InvokeServer("Troops", "Se\108\108", { Troop = tower })
-        end)
+        invoke({ "Troops", "Sell", { Troop = tower } })
         task.wait(0.2)
     end
 end
 
-local function autoUpgradeLoop()
-    task.spawn(function()
-        while running and getgenv().Config["Auto Upgrade Loop"] do
-            local towers = towerFolder:GetChildren()
-            for i = 1, #towers do
-                local t = towers[i]
-                if not running then
-                    return
-                end
-                pcall(function()
-                    remoteFunction:InvokeServer("Troops", "Upgrade", "Set", { Troop = t })
-                end)
-                task.wait(1)
+---------------------------------------------------------------------
+-- 🌊 Auto Sell (giữ như gốc)
+---------------------------------------------------------------------
+local function autoSell()
+    local auto = getgenv().Config['Auto Sell']
+    if not (auto and auto.Enabled) then return end
+    local waveTarget = tonumber(auto['At Wave'])
+    if waveLabel then
+        waveLabel:GetPropertyChangedSignal("Text"):Connect(function()
+            local currentWave = tonumber(waveLabel.Text:match("(%d+)"))
+            if currentWave and currentWave >= waveTarget then
+                sellAll()
             end
-            task.wait(3)
-        end
-    end)
+        end)
+    end
 end
 
-local function startFarm()
-    if running then
-        return
-    end
-    running = true
+---------------------------------------------------------------------
+-- 🚀 Hàm farm chính (auto skip bên trong)
+---------------------------------------------------------------------
+function startFarm()
+    if not getgenv().Config['Auto Farm'] then return end
 
+    -- 🌀 AutoSkip
     task.spawn(function()
-        while running do
+        while task.wait(1) do
             pcall(function()
                 remoteFunction:InvokeServer("Voting", "Skip")
             end)
-            task.wait(1)
         end
     end)
 
-    if getgenv().Config["Auto Upgrade Loop"] then
-        autoUpgradeLoop()
-    end
-
+    -- 🧱 Thực thi script farm
     if getgenv().FarmScript then
-        getgenv().FarmScript()
-    end
-
-    for _, label in ipairs(waveContainer:GetDescendants()) do
-        if label:IsA("TextLabel") then
-            label:GetPropertyChangedSignal("Text"):Connect(function()
-                local wave = tonumber(label.Text:match("^(%d+)"))
-                if
-                    wave
-                    and getgenv().Config["Auto Sell"]["Enabled"]
-                    and wave == getgenv().Config["Auto Sell"]["At Wave"]
-                then
-                    sellAll()
-                    running = false
-                end
-            end)
-        end
+        pcall(getgenv().FarmScript)
+    else
+        warn("⚠️ Chưa có getgenv().FarmScript được khai báo.")
     end
 end
 
-gameOverGui:GetPropertyChangedSignal("Visible"):Connect(function()
-    if gameOverGui.Visible then
-        task.wait(1)
-        startFarm()
-    end
-end)
+---------------------------------------------------------------------
+-- 🔁 Auto Replay (khi gameOver → chạy lại farm)
+---------------------------------------------------------------------
+local function autoReplay()
+    if not getgenv().Config['Auto Replay'] then return end
 
+    gameOverGui:GetPropertyChangedSignal("Visible"):Connect(function()
+        if gameOverGui.Visible then
+            task.wait(6)
+            warn("🌀 Trận đấu kết thúc → chạy lại farm...")
+            startFarm()
+        end
+    end)
+end
+
+---------------------------------------------------------------------
+-- ▶️ Bắt đầu
+---------------------------------------------------------------------
+autoSell()
+autoReplay()
 startFarm()
