@@ -78,18 +78,16 @@ function startFarm()
         end
     end)
 
-    -- Gọi script farm từ config
     if getgenv().FarmScript then
         getgenv().FarmScript()
     end
 
-    -- Auto sell (nếu bật)
     if getgenv().Config['Auto Sell'].Enabled then
         for _, label in ipairs(waveContainer:GetDescendants()) do
             if label:IsA("TextLabel") then
                 label:GetPropertyChangedSignal("Text"):Connect(function()
                     local waveNum = tonumber(label.Text:match("^(%d+)"))
-                    if waveNum and waveNum >= getgenv().Config['Auto Sell'].At Wave then
+                    if waveNum and waveNum >= getgenv().Config['Auto Sell']['At Wave'] then
                         sellAll()
                     end
                 end)
@@ -99,14 +97,16 @@ function startFarm()
 end
 
 ---------------------------------------------------------------------
--- 🎮 Khi gameOver: chạy lại farm + bán hết + dừng
+-- 🎮 Khi gameOver: replay + farm lại + sell hết
 ---------------------------------------------------------------------
 gameOverGui:GetPropertyChangedSignal("Visible"):Connect(function()
     if gameOverGui.Visible then
         task.wait(3)
-        startFarm()
-        task.wait(5)
-        sellAll()
+        if getgenv().Config['Auto Replay'] then
+            startFarm()
+            task.wait(5)
+            sellAll()
+        end
     end
 end)
 
