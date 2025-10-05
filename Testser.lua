@@ -134,7 +134,7 @@ end
 
 gameOverGui:GetPropertyChangedSignal("Visible"):Connect(function()
     if gameOverGui.Visible and getgenv().Config["Auto Replay"] then
-        task.wait(5)
+        task.wait(1)
         startFarm()
     end
 end)
