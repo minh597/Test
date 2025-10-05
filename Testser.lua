@@ -1,10 +1,10 @@
--- 📦 DỊCH VỤ
+-- 📦 Dịch vụ
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local remoteFunction = ReplicatedStorage:WaitForChild("RemoteFunction")
 local player = game.Players.LocalPlayer
 local towerFolder = workspace:WaitForChild("Towers")
 
--- 💰 GUI CASH
+-- 💰 GUI cash
 local cashLabel = player:WaitForChild("PlayerGui")
     :WaitForChild("ReactUniversalHotbar")
     :WaitForChild("Frame")
@@ -12,14 +12,14 @@ local cashLabel = player:WaitForChild("PlayerGui")
     :WaitForChild("cash")
     :WaitForChild("amount")
 
--- 🌊 GUI WAVE
+-- 🌊 GUI wave
 local waveContainer = player:WaitForChild("PlayerGui")
     :WaitForChild("ReactGameTopGameDisplay")
     :WaitForChild("Frame")
     :WaitForChild("wave")
     :WaitForChild("container")
 
--- 🎮 GUI GAMEOVER
+-- 🎮 GUI gameOver
 local gameOverGui = player:WaitForChild("PlayerGui")
     :WaitForChild("ReactGameNewRewards")
     :WaitForChild("Frame")
@@ -72,6 +72,7 @@ end
 -- 🚀 AUTO FARM (Auto Skip nằm trong luôn)
 ---------------------------------------------------------------------
 function startFarm()
+    -- Auto skip
     task.spawn(function()
         while true do
             pcall(function()
@@ -84,6 +85,8 @@ function startFarm()
     -- Gọi farm script người dùng
     if getgenv().FarmScript then
         getgenv().FarmScript()
+    else
+        warn("⚠️ Không tìm thấy getgenv().FarmScript — hãy chắc chắn config đã load trước!")
     end
 end
 
@@ -113,13 +116,15 @@ gameOverGui:GetPropertyChangedSignal("Visible"):Connect(function()
         startFarm()
         task.wait(2)
         sellAll()
-        warn("✅ One farm loop completed (GameOver)")
+        warn("✅ Farm loop completed (GameOver detected)")
     end
 end)
 
 ---------------------------------------------------------------------
--- ▶️ BẮT ĐẦU
+-- ▶️ BẮT ĐẦU FARM
 ---------------------------------------------------------------------
-if getgenv().Config["Auto Farm"] then
+if getgenv().Config and getgenv().Config["Auto Farm"] then
     startFarm()
+else
+    warn("⚠️ getgenv().Config hoặc Auto Farm chưa bật!")
 end
