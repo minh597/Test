@@ -138,8 +138,7 @@ if cfg['Auto Skip'] and tostring(cfg['Auto Skip']['Stop At Wave']) ~= "None" the
     startAutoSkip()
 end
 
-local gameOverGui = player
-    :WaitForChild("PlayerGui")
+local gameOverGui = player:WaitForChild("PlayerGui")
     :WaitForChild("ReactGameNewRewards")
     :WaitForChild("Frame")
     :WaitForChild("gameOver")
