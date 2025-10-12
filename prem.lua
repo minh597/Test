@@ -1,151 +1,123 @@
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local remoteFunction = ReplicatedStorage:WaitForChild("RemoteFunction")
 local TeleportService = game:GetService("TeleportService")
-local RemoteFunction = ReplicatedStorage:WaitForChild("RemoteFunction")
-local Towers = workspace:WaitForChild("Towers")
-local player = Players.LocalPlayer
-local cfg = getgenv().Config or {}
 
-local cashLabel = player:WaitForChild("PlayerGui")
+if workspace:FindFirstChild("Elevators") then
+    remoteFunction:InvokeServer("Multiplayer", "v2:start", {
+        count = 1,
+        mode = map
+    })
+else
+    remoteFunction:InvokeServer("Voting", "Skip")
+end
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local remoteFunction = ReplicatedStorage:WaitForChild("RemoteFunction")
+
+local player = game.Players.LocalPlayer
+local towerFolder = workspace:WaitForChild("Towers")
+    
+local cashLabel = player
+    :WaitForChild("PlayerGui")
     :WaitForChild("ReactUniversalHotbar")
     :WaitForChild("Frame")
     :WaitForChild("values")
     :WaitForChild("cash")
     :WaitForChild("amount")
 
+local waveContainer = player
+    :WaitForChild("PlayerGui")
+    :WaitForChild("ReactGameTopGameDisplay")
+    :WaitForChild("Frame")
+    :WaitForChild("wave")
+    :WaitForChild("container")
+
+local gameOverGui = player
+    :WaitForChild("PlayerGui")
+    :WaitForChild("ReactGameNewRewards")
+    :WaitForChild("Frame")
+    :WaitForChild("gameOver")
+
+
 local function getCash()
-    return tonumber((cashLabel.Text or ""):gsub("[^%d%-]", "")) or 0
+    local rawText = cashLabel.Text or ""
+    local cleaned = rawText:gsub("[^%d%-]", "")
+    return tonumber(cleaned) or 0
 end
 
-local function waitForCash(c)
-    while getCash() < c do task.wait(1) end
+local function waitForCash(minAmount)
+    while getCash() < minAmount do
+        task.wait(1)
+    end
 end
 
-local function invoke(args)
-    pcall(function() RemoteFunction:InvokeServer(unpack(args)) end)
-end
-
-function place(pos, name, cost)
+local function safeInvoke(args, cost)
     waitForCash(cost)
-    invoke({ "Troops", "Place", { Rotation = CFrame.new(), Position = pos }, name })
+    pcall(function()
+        remoteFunction:InvokeServer(unpack(args))
+    end)
+    task.wait(1)
 end
 
-function upgrade(index, cost)
-    local tower = Towers:GetChildren()[index]
-    if not tower then return end
-    waitForCash(cost)
-    invoke({ "Troops", "Upgrade", "Set", { Troop = tower } })
+local function placeTower(position, name, cost)
+    local args = { "Troops", "Pl\208\176ce", { Rotation = CFrame.new(), Position = position }, name }
+    safeInvoke(args, cost)
 end
 
-function sellAll()
-    for _, t in ipairs(Towers:GetChildren()) do
-        invoke({ "Troops", "Sell", { Troop = t } })
+local function upgradeTower(num, cost)
+    local tower = towerFolder:GetChildren()[num]
+    if tower then
+        local args = { "Troops", "Upgrade", "Set", { Troop = tower } }
+        safeInvoke(args, cost)
+    end
+end
+
+local function sellAllTowers()
+    for _, tower in ipairs(towerFolder:GetChildren()) do
+        local args = { "Troops", "Se\108\108", { Troop = tower } }
+        pcall(function()
+            remoteFunction:InvokeServer(unpack(args))
+        end)
         task.wait(0.2)
     end
 end
 
-function sellTower(index, wave)
-    local tower = Towers:GetChildren()[index]
-    if not tower then return end
-    local waveLabel = player:WaitForChild("PlayerGui")
-        :WaitForChild("ReactGameTopGameDisplay")
-        :WaitForChild("Frame")
-        :WaitForChild("wave")
-        :WaitForChild("container"):FindFirstChildWhichIsA("TextLabel")
-
-    waveLabel:GetPropertyChangedSignal("Text"):Connect(function()
-        local waveNum = tonumber(waveLabel.Text:match("^(%d+)"))
-        if waveNum and waveNum == wave then
-            invoke({ "Troops", "Sell", { Troop = tower } })
+-- 🔁 Tự bán tower ở wave cụ thể
+if SellAllTower then
+    for _, label in ipairs(waveContainer:GetDescendants()) do
+        if label:IsA("TextLabel") then
+            label:GetPropertyChangedSignal("Text"):Connect(function()
+                local waveNum = tonumber(label.Text:match("^(%d+)"))
+                if waveNum and waveNum == AtWave then
+                    sellAllTowers()
+                end
+            end)
         end
-    end)
+    end
 end
 
-local autoSkipRunning = false
+local function teleportToTDS()
+    TeleportService:Teleport(3260590327)
+end
 
-function startAutoSkip()
-    if autoSkipRunning then return end
-    autoSkipRunning = true
+gameOverGui:GetPropertyChangedSignal("Visible"):Connect(function()
+    if gameOverGui.Visible then
+        task.wait(5)
+        teleportToTDS()
+    end
+end)
+
+local function skipwave()
     task.spawn(function()
-        while autoSkipRunning do
+        while true do
             pcall(function()
-                RemoteFunction:InvokeServer("Voting", "Skip")
+                ReplicatedStorage:WaitForChild("RemoteFunction"):InvokeServer("Voting", "Skip")
             end)
             task.wait(1)
         end
     end)
 end
 
-function stopAutoSkip()
-    autoSkipRunning = false
+if autoskip then
+    skipwave()
 end
-
-local function autoStartGame()
-    local startCfg = cfg['Auto Start']
-    if not startCfg or not startCfg['Enabled'] then return end
-
-    local mode = startCfg['Mode'] or "survival"
-    local diff = startCfg['Difficulty'] or "Intermediate"
-    local map = startCfg['Map'] or "Crossroads"
-
-    task.spawn(function()
-        task.wait(1)
-        invoke({
-            "Multiplayer",
-            "v2:start",
-            {
-                ["difficulty"] = diff,
-                ["mode"] = mode,
-            }
-        })
-        task.wait(1)
-        invoke({ "LobbyVoting", "Override", map })
-        task.wait(1)
-        invoke({ "Voting", "Ready" })
-    end)
-end
-
-autoStartGame()
-
-local waveContainer = player:WaitForChild("PlayerGui")
-    :WaitForChild("ReactGameTopGameDisplay")
-    :WaitForChild("Frame")
-    :WaitForChild("wave")
-    :WaitForChild("container")
-
-for _, label in ipairs(waveContainer:GetDescendants()) do
-    if label:IsA("TextLabel") then
-        label:GetPropertyChangedSignal("Text"):Connect(function()
-            local waveNum = tonumber(label.Text:match("^(%d+)"))
-            if not waveNum then return end
-
-            local sellWave = cfg['Sell All'] and cfg['Sell All']['Wave']
-            local stopWave = cfg['Auto Skip'] and cfg['Auto Skip']['Stop At Wave']
-
-            if sellWave and tostring(sellWave) ~= "None" and waveNum == sellWave then
-                stopAutoSkip()
-                sellAll()
-            end
-
-            if stopWave and tostring(stopWave) ~= "None" and waveNum == stopWave then
-                stopAutoSkip()
-            end
-        end)
-    end
-end
-
-if cfg['Auto Skip'] and tostring(cfg['Auto Skip']['Stop At Wave']) ~= "None" then
-    startAutoSkip()
-end
-
-local gameOverGui = player:WaitForChild("PlayerGui")
-    :WaitForChild("ReactGameNewRewards")
-    :WaitForChild("Frame")
-    :WaitForChild("gameOver")
-
-gameOverGui:GetPropertyChangedSignal("Visible"):Connect(function()
-    if gameOverGui.Visible then
-        task.wait(5)
-        TeleportService:Teleport(3260590327, player)
-    end
-end)
