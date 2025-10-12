@@ -84,7 +84,7 @@ function sellAllTowers()
     end
 end
 
-if SellAllTower then
+if SellAllTower==true then
     for _, label in ipairs(waveContainer:GetDescendants()) do
         if label:IsA("TextLabel") then
             label:GetPropertyChangedSignal("Text"):Connect(function()
@@ -119,6 +119,6 @@ local function skipwave()
     end)
 end
 
-if autoskip then
+if autoskip==true then
     skipwave()
 end
