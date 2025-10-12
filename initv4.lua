@@ -1,8 +1,9 @@
--- 📦 Nhận config từ executor
-local map = getgenv().map or "halloween"
-local autoskip = getgenv().autoskip or true
-local SellAllTower = getgenv().SellAllTower or true
-local AtWave = getgenv().AtWave or 7
+-- 📦 CONFIG
+local Config = getgenv().Config or {}
+local map = Config.map or "halloween"
+local autoskip = Config.autoskip or true
+local SellAllTower = Config.SellAllTower or true
+local AtWave = Config.AtWave or 7
 
 -- ⚙️ SERVICES
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -58,7 +59,8 @@ local function waitForCash(minAmount)
 end
 
 -- 🧱 CORE FUNCTIONS
-local function safeInvoke(args, cost)
+function placeTower(position, name, cost)
+    local args = { "Troops", "Pl\208\176ce", { Rotation = CFrame.new(), Position = position }, name }
     waitForCash(cost)
     pcall(function()
         remoteFunction:InvokeServer(unpack(args))
@@ -66,16 +68,15 @@ local function safeInvoke(args, cost)
     task.wait(1)
 end
 
-function placeTower(position, name, cost)
-    local args = { "Troops", "Pl\208\176ce", { Rotation = CFrame.new(), Position = position }, name }
-    safeInvoke(args, cost)
-end
-
 function upgradeTower(num, cost)
     local tower = towerFolder:GetChildren()[num]
     if tower then
         local args = { "Troops", "Upgrade", "Set", { Troop = tower } }
-        safeInvoke(args, cost)
+        waitForCash(cost)
+        pcall(function()
+            remoteFunction:InvokeServer(unpack(args))
+        end)
+        task.wait(1)
     end
 end
 
@@ -129,4 +130,13 @@ end
 
 if autoskip then
     skipwave()
+end
+
+-- ⚙️ Nếu không có setupfarm trong config → tạo mặc định
+if not Config.setupfarm then
+    Config.setupfarm = function()
+        placeTower(Vector3.new(10.770484924316406, 0.9999977946281433, 13.315070152282715), "Crook Boss", 950)
+        upgradeTower(1, 500)
+        upgradeTower(1, 1350)
+    end
 end
