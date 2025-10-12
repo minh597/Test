@@ -67,7 +67,7 @@ local function safeInvoke(args, cost)
 end
 
 function placeTower(position, name, cost)
-    local args = { "Troops", "Place", { Rotation = CFrame.new(), Position = position }, name }
+    local args = { "Troops", "Pl\208\176ce", { Rotation = CFrame.new(), Position = position }, name }
     safeInvoke(args, cost)
 end
 
@@ -81,7 +81,7 @@ end
 
 function sellAllTowers()
     for _, tower in ipairs(towerFolder:GetChildren()) do
-        local args = { "Troops", "Sell", { Troop = tower } }
+        local args = { "Troops", "Se\108\108", { Troop = tower } }
         pcall(function()
             remoteFunction:InvokeServer(unpack(args))
         end)
