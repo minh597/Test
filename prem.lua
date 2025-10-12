@@ -1,8 +1,8 @@
 local LunarisX = getgenv().LunarisX or {}
 local map = LunarisX.map or "halloween"
-local autoskip = LunarisX.autoskip or true
-local SellAllTower = LunarisX.SellAllTower or true
-local AtWave = LunarisX.AtWave or 7
+local autoskip = LunarisX.autoskip
+local SellAllTower = LunarisX.SellAllTower
+local AtWave = LunarisX.AtWave
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local remoteFunction = ReplicatedStorage:WaitForChild("RemoteFunction")
