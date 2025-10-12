@@ -1,7 +1,15 @@
+-- 📦 Nhận config từ executor
+local map = getgenv().map or "halloween"
+local autoskip = getgenv().autoskip or true
+local SellAllTower = getgenv().SellAllTower or true
+local AtWave = getgenv().AtWave or 7
+
+-- ⚙️ SERVICES
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local remoteFunction = ReplicatedStorage:WaitForChild("RemoteFunction")
 local TeleportService = game:GetService("TeleportService")
 
+-- 🏁 START MAP
 if workspace:FindFirstChild("Elevators") then
     remoteFunction:InvokeServer("Multiplayer", "v2:start", {
         count = 1,
@@ -11,12 +19,10 @@ else
     remoteFunction:InvokeServer("Voting", "Skip")
 end
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local remoteFunction = ReplicatedStorage:WaitForChild("RemoteFunction")
-
+-- 🔧 PLAYER VARS
 local player = game.Players.LocalPlayer
 local towerFolder = workspace:WaitForChild("Towers")
-    
+
 local cashLabel = player
     :WaitForChild("PlayerGui")
     :WaitForChild("ReactUniversalHotbar")
@@ -38,7 +44,7 @@ local gameOverGui = player
     :WaitForChild("Frame")
     :WaitForChild("gameOver")
 
-
+-- 💰 CASH FUNCTIONS
 local function getCash()
     local rawText = cashLabel.Text or ""
     local cleaned = rawText:gsub("[^%d%-]", "")
@@ -51,6 +57,7 @@ local function waitForCash(minAmount)
     end
 end
 
+-- 🧱 CORE FUNCTIONS
 local function safeInvoke(args, cost)
     waitForCash(cost)
     pcall(function()
@@ -59,12 +66,12 @@ local function safeInvoke(args, cost)
     task.wait(1)
 end
 
-local function placeTower(position, name, cost)
-    local args = { "Troops", "Pl\208\176ce", { Rotation = CFrame.new(), Position = position }, name }
+function placeTower(position, name, cost)
+    local args = { "Troops", "Place", { Rotation = CFrame.new(), Position = position }, name }
     safeInvoke(args, cost)
 end
 
-local function upgradeTower(num, cost)
+function upgradeTower(num, cost)
     local tower = towerFolder:GetChildren()[num]
     if tower then
         local args = { "Troops", "Upgrade", "Set", { Troop = tower } }
@@ -72,9 +79,9 @@ local function upgradeTower(num, cost)
     end
 end
 
-local function sellAllTowers()
+function sellAllTowers()
     for _, tower in ipairs(towerFolder:GetChildren()) do
-        local args = { "Troops", "Se\108\108", { Troop = tower } }
+        local args = { "Troops", "Sell", { Troop = tower } }
         pcall(function()
             remoteFunction:InvokeServer(unpack(args))
         end)
@@ -82,7 +89,7 @@ local function sellAllTowers()
     end
 end
 
--- 🔁 Tự bán tower ở wave cụ thể
+-- 🔁 AUTO SELL TOWER
 if SellAllTower then
     for _, label in ipairs(waveContainer:GetDescendants()) do
         if label:IsA("TextLabel") then
@@ -96,6 +103,7 @@ if SellAllTower then
     end
 end
 
+-- 🚪 AUTO TELEPORT WHEN GAME OVER
 local function teleportToTDS()
     TeleportService:Teleport(3260590327)
 end
@@ -107,6 +115,7 @@ gameOverGui:GetPropertyChangedSignal("Visible"):Connect(function()
     end
 end)
 
+-- ⏩ AUTO SKIP WAVE
 local function skipwave()
     task.spawn(function()
         while true do
