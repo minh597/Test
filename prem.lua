@@ -122,3 +122,11 @@ end
 if autoskip then
     skipwave()
 end
+
+if not LunarisX.setupfarm then
+    LunarisX.setupfarm = function()
+        placeTower(Vector3.new(10.770484924316406, 0.9999977946281433, 13.315070152282715), "Crook Boss", 950)
+        upgradeTower(1, 500)
+        upgradeTower(1, 1350)
+    end
+end
