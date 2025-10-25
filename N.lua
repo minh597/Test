@@ -25,6 +25,7 @@ if workspace:FindFirstChild("Elevators") then
     remoteFunction:InvokeServer(unpack(args))
     task.wait(3)
 else
+    task.wait(10)
     game:GetService("ReplicatedStorage").RemoteFunction:InvokeServer(table.unpack({
         [1] = "LobbyVoting",
         [2] = "Override",
