@@ -1,55 +1,72 @@
 local LunarisX = getgenv().LunarisX or {}
 local map = LunarisX.map
-local Mode = LunarisX.Mode
-local Difficulty = LunarisX.Difficulty
 local autoskip = LunarisX.autoskip
 local SellAllTower = LunarisX.SellAllTower
 local AtWave = LunarisX.AtWave
 local autoCommander = LunarisX.autoCommander
+local Difficulty = LunarisX.difficulty
 
-if not game:IsLoaded() then
-    game.Loaded:Wait()
-end
-
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
+local remoteFunction = ReplicatedStorage:WaitForChild("RemoteFunction")
 local TeleportService = game:GetService("TeleportService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
+local player = game.Players.LocalPlayer
+local remoteEvent = ReplicatedStorage:WaitForChild("RemoteEvent")
 
-local RemoteFunction = ReplicatedStorage:WaitForChild("RemoteFunction")
-local RemoteEvent = ReplicatedStorage:WaitForChild("RemoteEvent")
-
-local player = Players.LocalPlayer
-local towerFolder = Workspace:WaitForChild("Towers")
-
-local playerGui = player:WaitForChild("PlayerGui")
-local hotbar = playerGui:WaitForChild("ReactUniversalHotbar")
-local hotbarFrame = hotbar:WaitForChild("Frame")
-local hotbarValues = hotbarFrame:WaitForChild("values")
-local cash = hotbarValues:WaitForChild("cash")
-local cashLabel = cash:WaitForChild("amount")
-
-local gameTopDisplay = playerGui:WaitForChild("ReactGameTopGameDisplay")
-local topFrame = gameTopDisplay:WaitForChild("Frame")
-local wave = topFrame:WaitForChild("wave")
-local waveContainer = wave:WaitForChild("container")
-
-local rewardsGui = playerGui:WaitForChild("ReactGameNewRewards")
-local rewardsFrame = rewardsGui:WaitForChild("Frame")
-local gameOverGui = rewardsFrame:WaitForChild("gameOver")
-
-if Workspace:FindFirstChild("Elevators") then
-    RemoteFunction:InvokeServer("Multiplayer", "v2:start", {difficulty = "Difficulty", mode = "Mode", count = 1})
+if workspace:FindFirstChild("Elevators") then
+    local args = {
+        [1] = "Multiplayer",
+        [2] = "v2:start",
+        [3] = {
+            ["difficulty"] = Difficulty,
+            ["mode"] = "survival",
+            ["count"] = 1
+        }
+    }
+    remoteFunction:InvokeServer(unpack(args))
     task.wait(3)
 else
-    task.wait(3)
-    RemoteFunction:InvokeServer("LobbyVoting", "Override", "map")
-    RemoteEvent:FireServer("LobbyVoting", "Vote", "map", Vector3.new(14.947, 9.6, 55.556))
-    RemoteEvent:FireServer("LobbyVoting", "Ready")
-    task.wait(5)
-    RemoteFunction:InvokeServer("Voting", "Skip")
+    game:GetService("ReplicatedStorage").RemoteFunction:InvokeServer(table.unpack({
+        [1] = "LobbyVoting",
+        [2] = "Override",
+        [3] = map,
+    }))
+    game:GetService("ReplicatedStorage").RemoteEvent:FireServer(table.unpack({
+        [1] = "LobbyVoting",
+        [2] = "Vote",
+        [3] = map,
+        [4] = Vector3.new(14.94717025756836, 9.59998607635498, 55.556156158447266),
+    }))
+    game:GetService("ReplicatedStorage").RemoteEvent:FireServer(table.unpack({
+        [1] = "LobbyVoting",
+        [2] = "Ready",
+    }))
+    task.wait(7)
+    remoteFunction:InvokeServer("Voting", "Skip")
+    task.wait(1)
 end
+
+local towerFolder = workspace:WaitForChild("Towers")
+
+local cashLabel = player
+    :WaitForChild("PlayerGui")
+    :WaitForChild("ReactUniversalHotbar")
+    :WaitForChild("Frame")
+    :WaitForChild("values")
+    :WaitForChild("cash")
+    :WaitForChild("amount")
+
+local waveContainer = player
+    :WaitForChild("PlayerGui")
+    :WaitForChild("ReactGameTopGameDisplay")
+    :WaitForChild("Frame")
+    :WaitForChild("wave")
+    :WaitForChild("container")
+
+local gameOverGui = player
+    :WaitForChild("PlayerGui")
+    :WaitForChild("ReactGameNewRewards")
+    :WaitForChild("Frame")
+    :WaitForChild("gameOver")
 
 local function getCash()
     local rawText = cashLabel.Text or ""
@@ -63,32 +80,32 @@ local function waitForCash(minAmount)
     end
 end
 
-local function placeTower(position, name, cost)
-    local args = {"Troops", "Place", {Rotation = CFrame.new(), Position = position}, name}
+function placeTower(position, name, cost)
+    local args = { "Troops", "Pl\208\176ce", { Rotation = CFrame.new(), Position = position }, name }
     waitForCash(cost)
     pcall(function()
-        RemoteFunction:InvokeServer(unpack(args))
+        remoteFunction:InvokeServer(unpack(args))
     end)
     task.wait(1)
 end
 
-local function upgradeTower(num, cost)
+function upgradeTower(num, cost)
     local tower = towerFolder:GetChildren()[num]
     if tower then
-        local args = {"Troops", "Upgrade", "Set", {Troop = tower}}
+        local args = { "Troops", "Upgrade", "Set", { Troop = tower } }
         waitForCash(cost)
         pcall(function()
-            RemoteFunction:InvokeServer(unpack(args))
+            remoteFunction:InvokeServer(unpack(args))
         end)
         task.wait(1)
     end
 end
 
-local function sellAllTowers()
+function sellAllTowers()
     for _, tower in ipairs(towerFolder:GetChildren()) do
-        local args = {"Troops", "Sell", {Troop = tower}}
+        local args = { "Troops", "Se\108\108", { Troop = tower } }
         pcall(function()
-            RemoteFunction:InvokeServer(unpack(args))
+            remoteFunction:InvokeServer(unpack(args))
         end)
         task.wait(0.2)
     end
@@ -107,10 +124,14 @@ if SellAllTower == true then
     end
 end
 
+local function teleportToTDS()
+    TeleportService:Teleport(3260590327)
+end
+
 gameOverGui:GetPropertyChangedSignal("Visible"):Connect(function()
     if gameOverGui.Visible then
         task.wait(5)
-        TeleportService:Teleport(3260590327)
+        teleportToTDS()
     end
 end)
 
@@ -118,7 +139,7 @@ local function skipwave()
     task.spawn(function()
         while true do
             pcall(function()
-                RemoteFunction:InvokeServer("Voting", "Skip")
+                ReplicatedStorage:WaitForChild("RemoteFunction"):InvokeServer("Voting", "Skip")
             end)
             task.wait(1)
         end
@@ -129,19 +150,24 @@ if autoskip == true then
     skipwave()
 end
 
+local interval = 10
+local vim_ok, vim = pcall(function()
+    return game:GetService("VirtualInputManager")
+end)
+
 local function autoCTA()
-    if VirtualInputManager and VirtualInputManager.SendKeyEvent then
+    if vim_ok and vim and vim.SendKeyEvent then
         pcall(function()
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game)
+            vim:SendKeyEvent(true, Enum.KeyCode.F, false, game)
             task.wait(0.04)
-            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.F, false, game)
+            vim:SendKeyEvent(false, Enum.KeyCode.F, false, game)
         end)
     end
 end
 
-if autoCommander == true then
+if autoCommander == true and waveStart == waveNum then
     task.spawn(function()
-        while task.wait(10) do
+        while task.wait(interval) do
             autoCTA()
         end
     end)
