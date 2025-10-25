@@ -1,3 +1,11 @@
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+
+repeat
+    task.wait()
+until game.Players.LocalPlayer and game.Players.LocalPlayer:FindFirstChild("PlayerGui")
+
 local LunarisX = getgenv().LunarisX or {}
 local map = LunarisX.map
 local autoskip = LunarisX.autoskip
